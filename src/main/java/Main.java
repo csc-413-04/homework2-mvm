@@ -6,6 +6,7 @@ import org.bson.Document;
 import spark.Request;
 import spark.Response;
 
+import java.sql.Timestamp;
 import java.util.Set;
 
 import static com.mongodb.client.model.Filters.eq;
@@ -38,14 +39,6 @@ public class Main {
                 .append("password", "5678");
         // insert document into collection
         userCollection.insertOne(userDoc);
-
-
-       // create a new document
-       Document authDoc = new Document("username", "user1")
-               .append("timestamp", "12:00");
-       // insert document into collection
-       authCollection.insertOne(authDoc);
-
 */
 
         staticFiles.externalLocation("public");
@@ -59,7 +52,7 @@ public class Main {
             // insert document into collection
             String name = req.queryParams("username");
             String pass = req.queryParams("password");
-            System.out.println("Param" +  name + "&" + pass);
+            //System.out.println("Param " +  name + " & " + pass);
             Document userDoc = new Document("username", name)
                     .append("password", pass);
             userCollection.insertOne(userDoc);
@@ -68,9 +61,20 @@ public class Main {
 
         get("/login", (req, res) -> {
             processRoute(req, res);
-            //if username and login correct then return hash or token
-
-            //if username correct and password incorrect then login fail
+            String name = req.queryParams("username");
+            Document searchUser = userCollection.find(eq("username", name)).first();
+            if (searchUser != null) {
+                String pass = req.queryParams("password");
+                String mPass = searchUser.getString("password");
+                //System.out.println("mPASS: " + mPass);
+                if (mPass.equalsIgnoreCase(pass)) {
+                    Object token = searchUser.get("_id");
+                    Timestamp time = new Timestamp(System.currentTimeMillis());
+                    //System.out.println( "Time: " + time);
+                    return token + " " + time;
+                }
+            }
+//            System.out.println("search result: " + searchUser);
             return "login_failed";
         });
 
