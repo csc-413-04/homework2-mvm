@@ -3,13 +3,14 @@ import com.mongodb.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import spark.Request;
 import spark.Response;
 
 import java.sql.Timestamp;
-import java.util.Set;
 import java.util.Date;
+import java.util.Set;
 
 import static com.mongodb.client.model.Filters.eq;
 import static spark.Spark.*;
@@ -34,12 +35,17 @@ public class Main {
         // get ref to collection
         MongoCollection<Document> userCollection = db.getCollection("users");
         MongoCollection<Document> authCollection = db.getCollection("auth");
-
+        /*
+        // create a new document
+        Document userDoc = new Document("username", "user2")
+                .append("password", "5678");
+        // insert document into collection
+        userCollection.insertOne(userDoc);
+*/
 
         staticFiles.externalLocation("public");
         // http://sparkjava.com/documentation
         port(27017);
-
         // calling get will make your app start listening for the GET path with the /hello endpoint
         get("/newuser",(req, res) -> {
             processRoute(req, res);
@@ -50,6 +56,7 @@ public class Main {
             //System.out.println("Param " +  name + " & " + pass);
             Document userDoc = new Document("username", name)
                     .append("password", pass);
+
             userCollection.insertOne(userDoc);
             return "okay";
         });
@@ -58,24 +65,32 @@ public class Main {
             processRoute(req, res);
             String name = req.queryParams("username");
             Document searchUser = userCollection.find(eq("username", name)).first();
-            long msDate1 = new Date().getTime();
+            long msDate1 =  new Date().getTime();
             Timestamp ts = new Timestamp(msDate1);
             long msDate2 = ts.getTime();
-            Date date =  new Date(msDate2);
+            Date date = new Date( msDate2 );
+//            System.out.println("msDate1 = " + msDate1 );
+//            System.out.println("ts = " + ts );
+//            System.out.println("msDate2 = " + msDate2 );
+//            System.out.println("date = " + date );
 
             if (searchUser != null) {
-                String pass = req.queryParams("password");
-                String mPass = searchUser.getString("password");
+                String pass = req.queryParams("password");      //password from the request
+                String mPass = searchUser.getString("password");        //password from the collection
                 //System.out.println("mPASS: " + mPass);
                 if (mPass.equalsIgnoreCase(pass)) {
                     Object token = searchUser.get("_id");
+                    //Timestamp time = new Timestamp(System.currentTimeMillis());
+                    //System.out.println( "Time: " + time);
+                    // create a new document
                     Document authDoc = new Document("token", token)
-                            .append("time" , date);
-                    //insert document into collection
+                            .append("time", date);
+                    // insert document into collection
                     authCollection.insertOne(authDoc);
                     return token + " " + date;
                 }
             }
+//            System.out.println("search result: " + searchUser);
             return "login_failed";
         });
 
@@ -83,16 +98,21 @@ public class Main {
             processRoute(req, res);
             String token = req.queryParams("token");
             ObjectId newToken = new ObjectId(token);
-            Document serchID = userCollection.find(eq("_id",newToken)).first();
-
-            if (serchID !=null) {
+            Document searchID = userCollection.find(eq("_id", newToken)).first();
+            System.out.println("User: " + searchID);
+            if (searchID != null) {
                 String friendToken = req.queryParams("friend");
                 ObjectId newFriendToken = new ObjectId(friendToken);
                 Document searchFriendID = userCollection.find(eq("_id", newFriendToken)).first();
-                if (searchFriendID !=null){
-                    return "okay";
+                if (searchFriendID != null) {
+                    System.out.println("Friend: " + searchFriendID);
                 }
-            }
+                Bson filter = new Document("_id", newToken);
+                Bson newFriend = new Document("friend", newFriendToken);
+                Bson updateDoc = new Document("$push", newFriend);
+                userCollection.updateOne(filter, updateDoc);
+                return "okay";
+            } else
                 return "failed_authentication";
         });
 
@@ -100,7 +120,6 @@ public class Main {
             processRoute(req, res);
             return "otherfriendsuserid";
         });
-
     }
 }
 
