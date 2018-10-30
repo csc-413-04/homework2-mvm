@@ -35,13 +35,6 @@ public class Main {
         // get ref to collection
         MongoCollection<Document> userCollection = db.getCollection("users");
         MongoCollection<Document> authCollection = db.getCollection("auth");
-        /*
-        // create a new document
-        Document userDoc = new Document("username", "user2")
-                .append("password", "5678");
-        // insert document into collection
-        userCollection.insertOne(userDoc);
-*/
 
         staticFiles.externalLocation("public");
         // http://sparkjava.com/documentation
@@ -73,15 +66,12 @@ public class Main {
 //            System.out.println("ts = " + ts );
 //            System.out.println("msDate2 = " + msDate2 );
 //            System.out.println("date = " + date );
-
             if (searchUser != null) {
                 String pass = req.queryParams("password");      //password from the request
                 String mPass = searchUser.getString("password");        //password from the collection
                 //System.out.println("mPASS: " + mPass);
                 if (mPass.equalsIgnoreCase(pass)) {
                     Object token = searchUser.get("_id");
-                    //Timestamp time = new Timestamp(System.currentTimeMillis());
-                    //System.out.println( "Time: " + time);
                     // create a new document
                     Document authDoc = new Document("token", token)
                             .append("time", date);
@@ -106,19 +96,26 @@ public class Main {
                 Document searchFriendID = userCollection.find(eq("_id", newFriendToken)).first();
                 if (searchFriendID != null) {
                     System.out.println("Friend: " + searchFriendID);
+                    Bson filter = new Document("_id", newToken);
+                    Bson newFriend = new Document("friend", newFriendToken);
+                    Bson updateDoc = new Document("$push", newFriend);
+                    userCollection.updateOne(filter, updateDoc);
+                    return "okay";
                 }
-                Bson filter = new Document("_id", newToken);
-                Bson newFriend = new Document("friend", newFriendToken);
-                Bson updateDoc = new Document("$push", newFriend);
-                userCollection.updateOne(filter, updateDoc);
-                return "okay";
-            } else
+            }
                 return "failed_authentication";
         });
 
         get("/friends", (req, res) -> {
             processRoute(req, res);
-            return "otherfriendsuserid";
+            String token = req.queryParams("token");
+            ObjectId newToken = new ObjectId(token);
+            Document searchID = userCollection.find(eq("_id", newToken)).first();
+            if (searchID != null) {
+                Object friend = searchID.get("friend");
+                return friend;
+            }
+            return "wrong token";
         });
     }
 }
