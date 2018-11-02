@@ -38,7 +38,7 @@ public class Main {
 
         staticFiles.externalLocation("public");
         // http://sparkjava.com/documentation
-        port(27017);
+        port(1234);
         // calling get will make your app start listening for the GET path with the /hello endpoint
         get("/newuser",(req, res) -> {
             processRoute(req, res);
@@ -49,7 +49,6 @@ public class Main {
             //System.out.println("Param " +  name + " & " + pass);
             Document userDoc = new Document("username", name)
                     .append("password", pass);
-
             userCollection.insertOne(userDoc);
             return "okay";
         });
